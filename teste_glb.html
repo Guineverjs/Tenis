@@ -1,0 +1,237 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#171814">
+  <title>Studio Tangível — GLB real</title>
+  <style>
+    :root{--bg:#eeeae2;--panel:#fffdf8;--ink:#25261f;--muted:#73756b;--line:#d9d3c6;--dark:#171814}
+    *{box-sizing:border-box}
+    html,body{margin:0;height:100%;font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:var(--bg);color:var(--ink)}
+    body{overflow:hidden}
+    .app{height:100%;display:grid;grid-template-rows:auto 1fr auto}
+    header{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;background:var(--panel);border-bottom:1px solid var(--line);gap:12px}
+    .brand{display:flex;align-items:center;gap:11px}.mark{width:44px;height:44px;border-radius:14px;background:var(--dark);display:grid;place-items:center;color:white;font-size:21px}
+    h1{font-size:18px;margin:0}.sub{font-size:11px;color:var(--muted);margin-top:2px}
+    .tag{font-size:11px;color:var(--muted);border:1px solid var(--line);padding:7px 10px;border-radius:999px}
+    .stage{position:relative;min-height:0}
+    #three{position:absolute;inset:0}
+    .status{position:absolute;z-index:10;left:50%;top:50%;transform:translate(-50%,-50%);padding:12px 15px;border-radius:14px;background:rgba(23,24,20,.88);color:white;font-size:13px;text-align:center;max-width:80%}
+    .hint{position:absolute;z-index:6;left:50%;bottom:16px;transform:translateX(-50%);background:rgba(23,24,20,.84);color:white;padding:9px 13px;border-radius:999px;font-size:12px;white-space:nowrap}
+    .badge{position:absolute;z-index:6;top:14px;left:14px;background:rgba(255,253,248,.93);border:1px solid var(--line);padding:8px 11px;border-radius:999px;font-size:12px;color:var(--muted)}
+    .controls{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding:10px;background:var(--panel);border-top:1px solid var(--line)}
+    button{min-height:44px;border-radius:12px;border:1px solid var(--line);background:white;color:var(--ink);font:inherit;font-weight:700}
+    button.primary{background:var(--dark);color:white;border-color:var(--dark)}
+    footer{position:absolute;right:10px;bottom:62px;font-size:9px;color:var(--muted);z-index:5;background:rgba(255,253,248,.8);padding:4px 6px;border-radius:6px}
+    @media(max-width:520px){.sub,.tag{display:none}.hint{font-size:11px}}
+  </style>
+  <script type="importmap">
+  {
+    "imports":{
+      "three":"https://cdn.jsdelivr.net/npm/three@0.168.0/build/three.module.js",
+      "three/addons/":"https://cdn.jsdelivr.net/npm/three@0.168.0/examples/jsm/"
+    }
+  }
+  </script>
+</head>
+<body>
+<div class="app">
+  <header>
+    <div class="brand">
+      <div class="mark">✦</div>
+      <div><h1>Studio Tangível</h1><div class="sub">teste com sneaker GLB real</div></div>
+    </div>
+    <div class="tag">GLB v0.3a</div>
+  </header>
+
+  <main class="stage">
+    <div id="three"></div>
+    <div class="badge">👟 Modelo real de demonstração</div>
+    <div id="status" class="status">Carregando o sneaker 3D real…<br><small>o arquivo tem alguns MB</small></div>
+    <div class="hint">Arraste para girar • pinça para zoom</div>
+    <footer>Modelo: © 2021 Shopify • CC BY 4.0 • Khronos glTF Sample Assets</footer>
+  </main>
+
+  <div class="controls">
+    <button id="front">Lateral</button>
+    <button id="home" class="primary">Visão 3/4</button>
+    <button id="spin">Girar 360°</button>
+  </div>
+</div>
+
+<script type="module">
+  import * as THREE from 'three';
+  import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+  import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+
+  const host = document.getElementById('three');
+  const status = document.getElementById('status');
+
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color(0xeeeae2);
+
+  const camera = new THREE.PerspectiveCamera(34,1,.01,1000);
+
+  const renderer = new THREE.WebGLRenderer({antialias:true,preserveDrawingBuffer:true});
+  renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+  renderer.outputColorSpace = THREE.SRGBColorSpace;
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.05;
+  host.appendChild(renderer.domElement);
+
+  const controls = new OrbitControls(camera,renderer.domElement);
+  controls.enableDamping = true;
+  controls.enablePan = false;
+  controls.minDistance = .5;
+  controls.maxDistance = 50;
+
+  scene.add(new THREE.HemisphereLight(0xffffff,0x77756e,2.5));
+  const key = new THREE.DirectionalLight(0xffffff,3.2);
+  key.position.set(4,7,6); key.castShadow=true; scene.add(key);
+  const rim = new THREE.DirectionalLight(0xffead0,1.0);
+  rim.position.set(-5,3,-4); scene.add(rim);
+
+  const groundMat = new THREE.MeshStandardMaterial({color:0xded9cf,roughness:.95});
+  const ground = new THREE.Mesh(new THREE.CircleGeometry(6,96),groundMat);
+  ground.rotation.x=-Math.PI/2; ground.receiveShadow=true; scene.add(ground);
+
+  const root = new THREE.Group();
+  scene.add(root);
+  let model = null;
+  let radius = 1;
+  let spinning = false;
+
+  const MODEL_URL =
+    'https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/MaterialsVariantsShoe/glTF-Binary/MaterialsVariantsShoe.glb';
+
+  function normalizeModel(obj){
+    // Primeiro centraliza e normaliza a escala com o modelo SEM rotações inventadas.
+    obj.updateMatrixWorld(true);
+    let box = new THREE.Box3().setFromObject(obj);
+    const center = box.getCenter(new THREE.Vector3());
+    const size = box.getSize(new THREE.Vector3());
+
+    obj.position.sub(center);
+    obj.updateMatrixWorld(true);
+
+    const maxDim = Math.max(size.x,size.y,size.z);
+    const s = 4.0 / Math.max(maxDim,.001);
+    obj.scale.setScalar(s);
+    obj.updateMatrixWorld(true);
+
+    // Mede novamente já normalizado.
+    box = new THREE.Box3().setFromObject(obj);
+    const center2 = box.getCenter(new THREE.Vector3());
+    obj.position.x -= center2.x;
+    obj.position.z -= center2.z;
+    obj.position.y -= box.min.y;   // pousa no chão
+
+    obj.updateMatrixWorld(true);
+    box = new THREE.Box3().setFromObject(obj);
+    const sphere = box.getBoundingSphere(new THREE.Sphere());
+    radius = Math.max(sphere.radius,1);
+
+    obj.traverse(n=>{
+      if(n.isMesh){
+        n.castShadow=true;
+        n.receiveShadow=true;
+      }
+    });
+
+    ground.position.y = -.03;
+  }
+
+  function fitCamera(direction=new THREE.Vector3(1.25,.65,1.7)){
+    if(!model) return;
+
+    const rect = host.getBoundingClientRect();
+    camera.aspect = rect.width/Math.max(1,rect.height);
+
+    // Bounding sphere garante que caiba em qualquer proporção de tela.
+    const vFov = THREE.MathUtils.degToRad(camera.fov);
+    const hFov = 2*Math.atan(Math.tan(vFov/2)*camera.aspect);
+    const limitingFov = Math.max(.12,Math.min(vFov,hFov));
+    const distance = (radius / Math.sin(limitingFov/2))*1.18;
+
+    // Centro visual aproximadamente na metade da altura do modelo.
+    const box = new THREE.Box3().setFromObject(model);
+    const target = box.getCenter(new THREE.Vector3());
+
+    direction.normalize();
+    camera.position.copy(target).add(direction.multiplyScalar(distance));
+    camera.near=Math.max(.01,distance/100);
+    camera.far=Math.max(100,distance*30);
+    camera.lookAt(target);
+    camera.updateProjectionMatrix();
+
+    controls.target.copy(target);
+    controls.update();
+  }
+
+  function resize(){
+    const r=host.getBoundingClientRect();
+    renderer.setSize(r.width,r.height,false);
+    if(model) fitCamera(currentDirection.clone());
+  }
+
+  let currentDirection = new THREE.Vector3(1.25,.65,1.7);
+
+  function view34(){
+    currentDirection.set(1.25,.65,1.7);
+    fitCamera(currentDirection.clone());
+  }
+
+  function viewSide(){
+    // Variação lateral simples; se o asset usar outro eixo,
+    // ainda fica inteiramente enquadrado.
+    currentDirection.set(0,.25,1);
+    fitCamera(currentDirection.clone());
+  }
+
+  const loader = new GLTFLoader();
+  loader.load(
+    MODEL_URL,
+    gltf=>{
+      model=gltf.scene;
+      root.add(model);
+      normalizeModel(model);
+      view34();
+      status.style.display='none';
+    },
+    xhr=>{
+      if(xhr.total){
+        const p=Math.round(xhr.loaded/xhr.total*100);
+        status.innerHTML=`Carregando sneaker 3D real…<br><small>${p}%</small>`;
+      }
+    },
+    err=>{
+      console.error(err);
+      status.innerHTML='Não consegui carregar o GLB.<br><small>Verifique a internet e recarregue a página.</small>';
+    }
+  );
+
+  addEventListener('resize',resize);
+  resize();
+
+  document.getElementById('home').onclick=view34;
+  document.getElementById('front').onclick=viewSide;
+  document.getElementById('spin').onclick=()=>{
+    spinning=!spinning;
+    document.getElementById('spin').textContent=spinning?'Parar giro':'Girar 360°';
+  };
+
+  const clock=new THREE.Clock();
+  function animate(){
+    requestAnimationFrame(animate);
+    const dt=clock.getDelta();
+    if(spinning && model) root.rotation.y+=dt*.55;
+    controls.update();
+    renderer.render(scene,camera);
+  }
+  animate();
+</script>
+</body>
+</html>
