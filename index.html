@@ -114,17 +114,17 @@
       <div class="brandmark">✦</div>
       <div><h1>Studio Tangível</h1><small>material real → customização 3D</small></div>
     </div>
-    <div class="version">MVP 0.1d • correção 3D</div>
+    <div class="version">MVP 0.1e • câmera fixa segura</div>
   </header>
 
   <main>
     <section class="viewer">
       <div id="three"></div>
       <div class="viewer-top">
-        <div class="pill">👟 Sneaker genérico • v0.1d</div>
+        <div class="pill">👟 Sneaker genérico • v0.1e</div>
         <div class="pill" id="selectedPill">Editando: Lateral</div>
       </div>
-      <div class="hint">Tênis enquadrado automaticamente • arraste para girar • pinça para zoom</div>
+      <div class="hint">Visão inicial fixa • arraste para girar • pinça para zoom</div>
     </section>
 
     <aside class="panel">
@@ -184,7 +184,7 @@
       </section>
 
       <div class="status" id="status">
-        v0.1d carregada. O tênis 3D deve aparecer inteiro e centralizado. Escolha uma região e capture um material.
+        v0.1e carregada. Esta versão usa uma câmera 3D fixa e mais distante para manter o tênis inteiro na tela.
       </div>
       <footer>Protótipo de validação • Studio Tangível • modelo 3D gerado por código</footer>
     </aside>
@@ -238,8 +238,8 @@
   const controls = new OrbitControls(camera, renderer.domElement);
   controls.enableDamping = true;
   controls.target.set(0, .9, 0);
-  controls.minDistance = 4;
-  controls.maxDistance = 30;
+  controls.minDistance = 5.5;
+  controls.maxDistance = 18;
 
   const hemi = new THREE.HemisphereLight(0xffffff, 0x6a6a62, 2.2);
   scene.add(hemi);
@@ -272,8 +272,8 @@
   Object.entries(mats).forEach(([k,m]) => defaultColors[k] = m.color.getHex());
 
   const shoe = new THREE.Group();
-  shoe.rotation.y = -0.12;
-  shoe.scale.setScalar(0.82);
+  shoe.rotation.y = -0.18;
+  shoe.scale.setScalar(0.58);
   shoe.position.set(0, 0.05, 0);
   scene.add(shoe);
 
@@ -376,40 +376,22 @@
   label.position.set(-.35,2.05,.38); label.rotation.z = -.1; shoe.add(label);
 
   // ---------- Utilidades ----------
-  let hasUserMovedCamera = false;
+  function setHomeView(){
+    // Configuração deliberadamente simples: sem cálculo automático de bounding box.
+    // O sneaker fica menor e a câmera mais distante para garantir que caiba no celular.
+    const portrait = window.innerHeight >= window.innerWidth;
 
-  function fitShoeView(){
-    // Mede o sneaker já montado, incluindo todas as peças.
-    shoe.updateMatrixWorld(true);
-    const box = new THREE.Box3().setFromObject(shoe);
-    const center = box.getCenter(new THREE.Vector3());
-    const size = box.getSize(new THREE.Vector3());
+    if(portrait){
+      camera.position.set(7.8, 5.1, 12.8);
+    }else{
+      camera.position.set(6.7, 4.3, 10.4);
+    }
 
-    const rect = host.getBoundingClientRect();
-    const aspect = Math.max(0.25, rect.width / Math.max(1, rect.height));
-
-    // Calcula FOV horizontal a partir do FOV vertical.
-    const vFov = THREE.MathUtils.degToRad(camera.fov);
-    const hFov = 2 * Math.atan(Math.tan(vFov / 2) * aspect);
-
-    // Calcula a distância necessária para caber tanto na largura quanto na altura.
-    const fitHeightDistance = (size.y / 2) / Math.tan(vFov / 2);
-    const fitWidthDistance  = (size.x / 2) / Math.tan(hFov / 2);
-
-    // Margem generosa no celular para o tênis nunca ficar cortado.
-    let distance = Math.max(fitHeightDistance, fitWidthDistance) * 1.65;
-    if(!Number.isFinite(distance) || distance <= 0) distance = 10;
-
-    // Visão 3/4 levemente de cima.
-    const direction = new THREE.Vector3(0.34, 0.30, 1.0).normalize();
-
-    controls.target.copy(center);
-    camera.position.copy(center).add(direction.multiplyScalar(distance));
-
-    camera.near = Math.max(0.05, distance / 100);
-    camera.far = Math.max(100, distance * 20);
+    controls.target.set(0, 0.82, 0);
+    camera.near = 0.1;
+    camera.far = 100;
     camera.updateProjectionMatrix();
-    camera.lookAt(center);
+    camera.lookAt(controls.target);
     controls.update();
   }
 
@@ -418,21 +400,16 @@
     camera.aspect = r.width / Math.max(1, r.height);
     camera.updateProjectionMatrix();
     renderer.setSize(r.width, r.height, false);
-
-    // Sempre reenquadra após mudança real no tamanho da área.
-    fitShoeView();
   }
 
-  new ResizeObserver(()=>{
-    resize();
-  }).observe(host);
-
+  window.addEventListener('resize', resize);
   resize();
+  setHomeView();
 
-  // Reconfere o enquadramento no próximo frame, já com o canvas dimensionado.
+  // Mais uma renderização depois que o layout mobile terminar de assentar.
   requestAnimationFrame(() => {
     resize();
-    fitShoeView();
+    setHomeView();
     renderer.render(scene, camera);
   });
 
@@ -561,9 +538,9 @@
   document.querySelectorAll('.swatch').forEach(b=>b.addEventListener('click',()=>setColor(selectedPart,b.dataset.color)));
 
   document.getElementById('recenter').addEventListener('click',()=>{
-    shoe.rotation.set(0, -0.12, 0);
-    fitShoeView();
-    setStatus('Tênis enquadrado e centralizado novamente.');
+    shoe.rotation.set(0, -0.18, 0);
+    setHomeView();
+    setStatus('Tênis voltou para a visão inicial.');
   });
 
   document.getElementById('reset').addEventListener('click',()=>{
@@ -574,8 +551,8 @@
     lastMaterialCanvas=null;
     document.getElementById('previewTitle').textContent='Nenhum material capturado';
     document.getElementById('previewInfo').textContent='A textura aparecerá aqui.';
-    shoe.rotation.set(0, -0.12, 0);
-    fitShoeView();
+    shoe.rotation.set(0, -0.18, 0);
+    setHomeView();
     setStatus('Tênis restaurado e centralizado.');
   });
 
