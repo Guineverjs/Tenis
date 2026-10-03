@@ -81,7 +81,7 @@
     #preview{width:52px;height:52px;border-radius:10px;object-fit:cover;background:#ddd;border:1px solid var(--line)}
     .material-preview strong{display:block;font-size:12px}
     .material-preview span{font-size:11px;color:var(--muted)}
-    .toolbar{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+    .toolbar{display:grid;grid-template-columns:1fr 1fr;gap:8px}
     .toolbar button{min-height:42px}
     .swatches{display:flex;gap:8px;flex-wrap:wrap}
     .swatch{width:36px;height:36px;border-radius:10px;border:2px solid #fff;box-shadow:0 0 0 1px var(--line)}
@@ -114,7 +114,7 @@
       <div class="brandmark">✦</div>
       <div><h1>Studio Tangível</h1><small>material real → customização 3D</small></div>
     </div>
-    <div class="version">MVP 0.1 • sem AprilTags</div>
+    <div class="version">MVP 0.1b • visão corrigida</div>
   </header>
 
   <main>
@@ -124,7 +124,7 @@
         <div class="pill">👟 Sneaker genérico • sem marca</div>
         <div class="pill" id="selectedPill">Editando: Lateral</div>
       </div>
-      <div class="hint">Arraste para girar • pinça/scroll para zoom</div>
+      <div class="hint">Arraste para girar • pinça para zoom • use “Centralizar” se sair da tela</div>
     </section>
 
     <aside class="panel">
@@ -177,6 +177,7 @@
       </section>
 
       <section class="toolbar">
+        <button id="recenter" class="ghost">Centralizar tênis</button>
         <button id="reset" class="ghost">Restaurar</button>
         <button id="spin" class="ghost">Girar 360°</button>
         <button id="save" class="secondary">Salvar imagem</button>
@@ -220,8 +221,10 @@
   const scene = new THREE.Scene();
   scene.background = new THREE.Color(0xf4f0e7);
 
-  const camera = new THREE.PerspectiveCamera(35, 1, 0.1, 100);
-  camera.position.set(6.7, 4.0, 7.2);
+  const camera = new THREE.PerspectiveCamera(34, 1, 0.1, 100);
+
+  // A posição será calculada automaticamente pelo enquadramento responsivo.
+  camera.position.set(7.8, 4.8, 9.6);
 
   const renderer = new THREE.WebGLRenderer({antialias:true, preserveDrawingBuffer:true});
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
@@ -234,9 +237,9 @@
 
   const controls = new OrbitControls(camera, renderer.domElement);
   controls.enableDamping = true;
-  controls.target.set(0, .65, 0);
-  controls.minDistance = 5;
-  controls.maxDistance = 14;
+  controls.target.set(0, .9, 0);
+  controls.minDistance = 5.5;
+  controls.maxDistance = 18;
 
   const hemi = new THREE.HemisphereLight(0xffffff, 0x6a6a62, 2.2);
   scene.add(hemi);
@@ -269,7 +272,9 @@
   Object.entries(mats).forEach(([k,m]) => defaultColors[k] = m.color.getHex());
 
   const shoe = new THREE.Group();
-  shoe.rotation.y = -0.30;
+  shoe.rotation.y = -0.18;
+  shoe.scale.setScalar(0.88);
+  shoe.position.set(0, 0.05, 0);
   scene.add(shoe);
 
   function extrudeShape(points, depth, material, z=0, bevel=.08){
@@ -371,13 +376,44 @@
   label.position.set(-.35,2.05,.38); label.rotation.z = -.1; shoe.add(label);
 
   // ---------- Utilidades ----------
+  let firstFit = true;
+
+  function fitShoeView(force=false){
+    const r = host.getBoundingClientRect();
+    const aspect = r.width / Math.max(1, r.height);
+
+    // Em telas estreitas/verticais precisamos recuar bastante a câmera
+    // para o comprimento inteiro do tênis caber no campo de visão horizontal.
+    if(aspect < 0.85){
+      camera.position.set(9.8, 5.6, 11.8);
+      controls.target.set(0, .82, 0);
+    }else if(aspect < 1.15){
+      camera.position.set(8.8, 5.0, 10.4);
+      controls.target.set(0, .84, 0);
+    }else{
+      camera.position.set(7.4, 4.25, 8.7);
+      controls.target.set(0, .82, 0);
+    }
+
+    controls.update();
+  }
+
   function resize(){
     const r = host.getBoundingClientRect();
     camera.aspect = r.width / Math.max(1,r.height);
     camera.updateProjectionMatrix();
     renderer.setSize(r.width, r.height, false);
+
+    if(firstFit){
+      fitShoeView(true);
+      firstFit = false;
+    }
   }
-  new ResizeObserver(resize).observe(host);
+
+  new ResizeObserver(()=>{
+    resize();
+  }).observe(host);
+
   resize();
 
   function setStatus(msg){ statusEl.textContent = msg; }
@@ -504,6 +540,12 @@
 
   document.querySelectorAll('.swatch').forEach(b=>b.addEventListener('click',()=>setColor(selectedPart,b.dataset.color)));
 
+  document.getElementById('recenter').addEventListener('click',()=>{
+    shoe.rotation.set(0, -0.18, 0);
+    fitShoeView(true);
+    setStatus('Tênis centralizado novamente.');
+  });
+
   document.getElementById('reset').addEventListener('click',()=>{
     for(const [k,m] of Object.entries(mats)){
       disposeMap(m); m.color.setHex(defaultColors[k]); m.needsUpdate=true;
@@ -512,7 +554,9 @@
     lastMaterialCanvas=null;
     document.getElementById('previewTitle').textContent='Nenhum material capturado';
     document.getElementById('previewInfo').textContent='A textura aparecerá aqui.';
-    setStatus('Tênis restaurado.');
+    shoe.rotation.set(0, -0.18, 0);
+    fitShoeView(true);
+    setStatus('Tênis restaurado e centralizado.');
   });
 
   document.getElementById('spin').addEventListener('click',()=>{
