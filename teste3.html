@@ -1,0 +1,607 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#171814" />
+  <title>Studio Tangível — MVP 0.1</title>
+  <style>
+    :root{
+      --bg:#f3efe6; --panel:#fffdf8; --ink:#25261f; --muted:#6e7065;
+      --accent:#617b55; --accent2:#d8a23c; --line:#ded8ca; --dark:#171814;
+      --shadow:0 16px 45px rgba(41,39,31,.12);
+    }
+    *{box-sizing:border-box}
+    html,body{margin:0;min-height:100%;font-family:Inter,ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;color:var(--ink);background:var(--bg)}
+    button,input{font:inherit}
+    button{cursor:pointer}
+    .app{min-height:100vh;display:grid;grid-template-rows:auto 1fr}
+    header{
+      display:flex;align-items:center;justify-content:space-between;gap:16px;
+      padding:14px clamp(16px,3vw,30px);background:rgba(255,253,248,.92);
+      border-bottom:1px solid var(--line);backdrop-filter:blur(10px);position:sticky;top:0;z-index:20;
+    }
+    .brand{display:flex;align-items:center;gap:12px;min-width:0}
+    .brandmark{
+      width:42px;height:42px;border-radius:13px;background:var(--dark);color:white;
+      display:grid;place-items:center;font-size:21px;box-shadow:var(--shadow)
+    }
+    .brand h1{font-size:17px;margin:0;line-height:1.1}
+    .brand small{display:block;color:var(--muted);margin-top:3px}
+    .version{font-size:12px;padding:7px 10px;border:1px solid var(--line);border-radius:999px;color:var(--muted);white-space:nowrap}
+    main{padding:18px;display:grid;grid-template-columns:minmax(0,1.25fr) minmax(320px,.75fr);gap:18px;min-height:0}
+    .viewer,.panel{background:var(--panel);border:1px solid var(--line);border-radius:22px;box-shadow:var(--shadow);overflow:hidden}
+    .viewer{position:relative;min-height:620px}
+    #three{position:absolute;inset:0}
+    .viewer-top{
+      position:absolute;z-index:5;left:16px;right:16px;top:16px;display:flex;justify-content:space-between;gap:10px;pointer-events:none
+    }
+    .pill{
+      background:rgba(255,253,248,.9);border:1px solid rgba(222,216,202,.9);padding:8px 11px;border-radius:999px;
+      font-size:12px;color:var(--muted);backdrop-filter:blur(8px)
+    }
+    .hint{position:absolute;left:16px;bottom:16px;z-index:5;background:rgba(23,24,20,.82);color:#fff;padding:9px 12px;border-radius:12px;font-size:12px}
+    .panel{padding:18px;display:flex;flex-direction:column;gap:16px;overflow:auto}
+    .section{border:1px solid var(--line);border-radius:18px;padding:15px;background:#fff}
+    .section h2{font-size:15px;margin:0 0 5px}
+    .section p{font-size:12px;line-height:1.5;color:var(--muted);margin:0 0 12px}
+    .parts{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+    .part{
+      border:1px solid var(--line);background:#faf8f2;padding:10px 6px;border-radius:12px;font-size:12px;color:var(--ink)
+    }
+    .part.active{background:var(--dark);border-color:var(--dark);color:#fff}
+    .camera-box{
+      position:relative;aspect-ratio:4/3;background:#1d1f1b;border-radius:16px;overflow:hidden;border:1px solid #2a2d27
+    }
+    video{width:100%;height:100%;object-fit:cover;display:block}
+    .scan-frame{
+      position:absolute;width:48%;aspect-ratio:1;left:50%;top:50%;transform:translate(-50%,-50%);
+      border:2px solid #fff;border-radius:16px;box-shadow:0 0 0 999px rgba(0,0,0,.24);pointer-events:none
+    }
+    .scan-frame::after{content:"MATERIAL";position:absolute;left:50%;bottom:-27px;transform:translateX(-50%);font-size:10px;letter-spacing:.12em;color:#fff}
+    .camera-empty{position:absolute;inset:0;display:grid;place-items:center;text-align:center;padding:20px;color:#c9cec2;font-size:12px}
+    .buttons{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+    .primary,.secondary,.ghost{
+      min-height:44px;border-radius:12px;border:1px solid transparent;font-weight:700;font-size:13px;padding:10px 12px
+    }
+    .primary{background:var(--accent);color:#fff}
+    .secondary{background:var(--accent2);color:#201a0c}
+    .ghost{background:#fff;border-color:var(--line);color:var(--ink)}
+    .filelabel{
+      min-height:44px;border:1px solid var(--line);border-radius:12px;background:#fff;display:grid;place-items:center;
+      font-weight:700;font-size:13px;cursor:pointer;padding:10px;text-align:center
+    }
+    .filelabel input{display:none}
+    .status{
+      font-size:12px;line-height:1.5;padding:10px 12px;background:#f6f4ed;border-radius:12px;color:var(--muted);border:1px dashed var(--line)
+    }
+    .material-preview{
+      display:flex;align-items:center;gap:10px;margin-top:10px;padding:9px;border-radius:12px;background:#f8f5ee;border:1px solid var(--line)
+    }
+    #preview{width:52px;height:52px;border-radius:10px;object-fit:cover;background:#ddd;border:1px solid var(--line)}
+    .material-preview strong{display:block;font-size:12px}
+    .material-preview span{font-size:11px;color:var(--muted)}
+    .toolbar{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+    .toolbar button{min-height:42px}
+    .swatches{display:flex;gap:8px;flex-wrap:wrap}
+    .swatch{width:36px;height:36px;border-radius:10px;border:2px solid #fff;box-shadow:0 0 0 1px var(--line)}
+    footer{font-size:10px;color:var(--muted);text-align:center;padding-top:2px}
+    @media(max-width:900px){
+      main{grid-template-columns:1fr;padding:10px}
+      .viewer{min-height:54vh}
+      .panel{overflow:visible}
+    }
+    @media(max-width:520px){
+      header{padding:11px 12px}.brand small{display:none}.version{display:none}
+      main{gap:10px}.viewer,.panel{border-radius:17px}.viewer{min-height:50vh}
+      .parts{grid-template-columns:repeat(2,1fr)}
+    }
+  </style>
+
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.168.0/build/three.module.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.168.0/examples/jsm/"
+      }
+    }
+  </script>
+</head>
+<body>
+<div class="app">
+  <header>
+    <div class="brand">
+      <div class="brandmark">✦</div>
+      <div><h1>Studio Tangível</h1><small>material real → customização 3D</small></div>
+    </div>
+    <div class="version">MVP 0.1g • visão lateral</div>
+  </header>
+
+  <main>
+    <section class="viewer">
+      <div id="three"></div>
+      <div class="viewer-top">
+        <div class="pill">👟 Sneaker genérico • v0.1g</div>
+        <div class="pill" id="selectedPill">Editando: Lateral</div>
+      </div>
+      <div class="hint">Visão lateral • arraste para girar • pinça para zoom</div>
+    </section>
+
+    <aside class="panel">
+      <section class="section">
+        <h2>1. Escolha a parte do tênis</h2>
+        <p>Nesta primeira versão os botões simulam as futuras fichas físicas com AprilTag.</p>
+        <div class="parts" id="parts">
+          <button class="part active" data-part="lateral">Lateral</button>
+          <button class="part" data-part="toe">Biqueira</button>
+          <button class="part" data-part="heel">Calcanhar</button>
+          <button class="part" data-part="tongue">Língua</button>
+          <button class="part" data-part="laces">Cadarços</button>
+          <button class="part" data-part="sole">Sola</button>
+        </div>
+      </section>
+
+      <section class="section">
+        <h2>2. Mostre um material real</h2>
+        <p>Centralize tecido, couro, papel ou estampa dentro do quadrado. Em celular, use preferencialmente a câmera traseira.</p>
+        <div class="camera-box">
+          <video id="video" playsinline autoplay muted></video>
+          <div id="cameraEmpty" class="camera-empty">Câmera ainda não iniciada.<br>Toque em “Abrir câmera”.</div>
+          <div class="scan-frame"></div>
+        </div>
+        <div class="buttons">
+          <button id="startCamera" class="ghost">Abrir câmera</button>
+          <button id="capture" class="primary">Capturar material</button>
+        </div>
+        <div class="buttons">
+          <label class="filelabel">Usar uma foto<input id="fileInput" type="file" accept="image/*"></label>
+          <button id="applyColor" class="ghost">Usar cor média</button>
+        </div>
+        <div class="material-preview">
+          <canvas id="preview" width="256" height="256"></canvas>
+          <div><strong id="previewTitle">Nenhum material capturado</strong><span id="previewInfo">A textura aparecerá aqui.</span></div>
+        </div>
+      </section>
+
+      <section class="section">
+        <h2>Teste rápido sem câmera</h2>
+        <p>Use uma cor para verificar imediatamente se cada região do tênis responde de forma independente.</p>
+        <div class="swatches">
+          <button class="swatch" data-color="#c94c42" style="background:#c94c42" aria-label="vermelho"></button>
+          <button class="swatch" data-color="#22252a" style="background:#22252a" aria-label="preto"></button>
+          <button class="swatch" data-color="#d7c29f" style="background:#d7c29f" aria-label="bege"></button>
+          <button class="swatch" data-color="#375d83" style="background:#375d83" aria-label="azul"></button>
+          <button class="swatch" data-color="#cda33b" style="background:#cda33b" aria-label="mostarda"></button>
+          <button class="swatch" data-color="#eeeeea" style="background:#eeeeea" aria-label="branco"></button>
+        </div>
+      </section>
+
+      <section class="toolbar">
+        <button id="recenter" class="ghost">Centralizar tênis</button>
+        <button id="reset" class="ghost">Restaurar</button>
+        <button id="spin" class="ghost">Girar 360°</button>
+        <button id="save" class="secondary">Salvar imagem</button>
+      </section>
+
+      <div class="status" id="status">
+        v0.1g carregada. Visão lateral ortográfica com margem ampla ativada.
+      </div>
+      <footer>Protótipo de validação • Studio Tangível • modelo 3D gerado por código</footer>
+    </aside>
+  </main>
+</div>
+
+<canvas id="captureCanvas" width="512" height="512" hidden></canvas>
+
+<script type="module">
+  import * as THREE from 'three';
+  import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+  const host = document.getElementById('three');
+  const statusEl = document.getElementById('status');
+  const selectedPill = document.getElementById('selectedPill');
+  const video = document.getElementById('video');
+  const cameraEmpty = document.getElementById('cameraEmpty');
+  const captureCanvas = document.getElementById('captureCanvas');
+  const preview = document.getElementById('preview');
+  const pctx = preview.getContext('2d', {willReadFrequently:true});
+  const cctx = captureCanvas.getContext('2d', {willReadFrequently:true});
+
+  let selectedPart = 'lateral';
+  let stream = null;
+  let lastMaterialCanvas = null;
+  let autoSpin = false;
+
+  const partNames = {
+    lateral:'Lateral', toe:'Biqueira', heel:'Calcanhar',
+    tongue:'Língua', laces:'Cadarços', sole:'Sola'
+  };
+
+  // ---------- Cena 3D ----------
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color(0xf4f0e7);
+
+  // Câmera ortográfica: evita distorção/cortes estranhos em telas verticais.
+  const camera = new THREE.OrthographicCamera(-4, 4, 4, -4, 0.1, 100);
+  camera.position.set(0.6, 2.8, 10.5);
+
+  const renderer = new THREE.WebGLRenderer({antialias:true, preserveDrawingBuffer:true});
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.outputColorSpace = THREE.SRGBColorSpace;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.05;
+  host.appendChild(renderer.domElement);
+
+  const controls = new OrbitControls(camera, renderer.domElement);
+  controls.enableDamping = true;
+  controls.target.set(0, .8, 0);
+  controls.enablePan = false;
+  controls.minZoom = 0.7;
+  controls.maxZoom = 2.6;
+
+  const hemi = new THREE.HemisphereLight(0xffffff, 0x6a6a62, 2.2);
+  scene.add(hemi);
+  const key = new THREE.DirectionalLight(0xffffff, 3.4);
+  key.position.set(5, 8, 5); key.castShadow = true;
+  scene.add(key);
+  const fill = new THREE.DirectionalLight(0xffe5c3, 1.2);
+  fill.position.set(-5, 3, -4);
+  scene.add(fill);
+
+  const ground = new THREE.Mesh(
+    new THREE.CircleGeometry(3.4, 80),
+    new THREE.MeshStandardMaterial({color:0xe3ddcf, roughness:.95})
+  );
+  ground.rotation.x = -Math.PI/2; ground.position.y = -.08; ground.receiveShadow = true;
+  scene.add(ground);
+
+  // ---------- Materiais independentes ----------
+  const mats = {
+    lateral: new THREE.MeshStandardMaterial({color:0xe9e6df, roughness:.82, metalness:0}),
+    toe:     new THREE.MeshStandardMaterial({color:0xddd9cf, roughness:.76}),
+    heel:    new THREE.MeshStandardMaterial({color:0xd5d0c5, roughness:.82}),
+    tongue:  new THREE.MeshStandardMaterial({color:0xe7e3db, roughness:.88}),
+    laces:   new THREE.MeshStandardMaterial({color:0xf4f1e9, roughness:.75}),
+    sole:    new THREE.MeshStandardMaterial({color:0xf5f3ed, roughness:.72}),
+    outsole: new THREE.MeshStandardMaterial({color:0x2e302d, roughness:.9}),
+    eyelet:  new THREE.MeshStandardMaterial({color:0x686a66, roughness:.4, metalness:.25})
+  };
+  const defaultColors = {};
+  Object.entries(mats).forEach(([k,m]) => defaultColors[k] = m.color.getHex());
+
+  const shoe = new THREE.Group();
+  shoe.rotation.y = -0.04;
+  shoe.scale.setScalar(0.66);
+  shoe.position.set(0, 0.05, 0);
+  scene.add(shoe);
+
+  function extrudeShape(points, depth, material, z=0, bevel=.08){
+    const s = new THREE.Shape();
+    s.moveTo(points[0][0], points[0][1]);
+    for(let i=1;i<points.length;i++) s.lineTo(points[i][0], points[i][1]);
+    s.closePath();
+    const g = new THREE.ExtrudeGeometry(s, {
+      depth, bevelEnabled:true, bevelSegments:3, steps:1,
+      bevelSize:bevel, bevelThickness:bevel*.7, curveSegments:12
+    });
+    g.center();
+    const mesh = new THREE.Mesh(g, material);
+    mesh.position.z = z;
+    mesh.castShadow = mesh.receiveShadow = true;
+    return mesh;
+  }
+
+  // Silhueta lateral do cabedal
+  const upper = extrudeShape([
+    [-2.35,.25],[-2.18,1.18],[-1.72,1.58],[-1.20,1.48],[-.55,1.18],
+    [.20,1.06],[.72,.82],[1.42,.60],[2.08,.48],[2.48,.30],[2.42,.12],[-1.92,.10]
+  ], 1.22, mats.lateral, 0, .09);
+  upper.position.y = .55;
+  shoe.add(upper);
+
+  // Sola e outsole
+  const sole = extrudeShape([
+    [-2.48,.05],[-2.38,.38],[1.90,.39],[2.47,.28],[2.58,.13],[2.50,-.03],[-2.18,-.08]
+  ], 1.32, mats.sole, 0, .06);
+  sole.position.y = .30;
+  shoe.add(sole);
+
+  const outsole = extrudeShape([
+    [-2.43,-.04],[-2.30,.08],[2.47,.08],[2.58,0],[2.48,-.12],[-2.25,-.15]
+  ], 1.36, mats.outsole, 0, .035);
+  outsole.position.y = .19;
+  shoe.add(outsole);
+
+  // Biqueira: painel visual destacado
+  const toe = extrudeShape([
+    [1.00,.40],[1.34,.73],[1.93,.66],[2.38,.46],[2.47,.27],[2.05,.17],[1.37,.19]
+  ], 1.27, mats.toe, .01, .05);
+  toe.position.y = .61;
+  shoe.add(toe);
+
+  // Calcanhar
+  const heel = extrudeShape([
+    [-2.35,.26],[-2.17,1.16],[-1.75,1.48],[-1.52,1.33],[-1.60,.26]
+  ], 1.27, mats.heel, .015, .05);
+  heel.position.y = .61;
+  shoe.add(heel);
+
+  // Língua
+  const tongueGeo = new THREE.BoxGeometry(.76, 1.42, .70, 3, 3, 3);
+  const tongue = new THREE.Mesh(tongueGeo, mats.tongue);
+  tongue.position.set(-.35, 1.55, .02);
+  tongue.rotation.z = -.10;
+  tongue.castShadow = true;
+  shoe.add(tongue);
+
+  // Peça frontal sobre a língua para dar sensação de abertura
+  const throatMat = new THREE.MeshStandardMaterial({color:0xc9c4b9,roughness:.9});
+  const throat = new THREE.Mesh(new THREE.BoxGeometry(1.55,.12,.84), throatMat);
+  throat.position.set(.18,1.20,.04);
+  throat.rotation.z = -.13;
+  shoe.add(throat);
+
+  // Cadarços em fileiras
+  for(let i=0;i<5;i++){
+    const lace = new THREE.Mesh(new THREE.BoxGeometry(1.22,.055,.055), mats.laces);
+    lace.position.set(-.02 + i*.12, 1.25 + i*.16, .47);
+    lace.rotation.z = -.12;
+    lace.castShadow = true;
+    shoe.add(lace);
+  }
+
+  // Ilhós
+  for(let side of [-1,1]){
+    for(let i=0;i<5;i++){
+      const ring = new THREE.Mesh(new THREE.TorusGeometry(.055,.018,8,20), mats.eyelet);
+      ring.position.set(-.55 + i*.12 + side*.55, 1.24 + i*.16, .485);
+      ring.rotation.x = Math.PI/2;
+      shoe.add(ring);
+    }
+  }
+
+  // Costuras decorativas simples
+  const stitchMat = new THREE.LineBasicMaterial({color:0xb4afa4, transparent:true, opacity:.8});
+  function stitch(points){
+    const g = new THREE.BufferGeometry().setFromPoints(points.map(p=>new THREE.Vector3(...p)));
+    const line = new THREE.Line(g, stitchMat); shoe.add(line);
+  }
+  stitch([[-1.55,.88,.64],[-.8,.78,.64],[.1,.74,.64],[.85,.57,.64]]);
+  stitch([[1.05,.77,.64],[1.52,.58,.64],[2.12,.45,.64]]);
+
+  // Pequena etiqueta neutra
+  const label = new THREE.Mesh(new THREE.BoxGeometry(.35,.22,.025), new THREE.MeshStandardMaterial({color:0x617b55,roughness:.8}));
+  label.position.set(-.35,2.05,.38); label.rotation.z = -.1; shoe.add(label);
+
+  // Centralização REAL do sneaker a partir do volume 3D resultante.
+  // Isso elimina qualquer deslocamento causado pela geometria procedural.
+  shoe.updateMatrixWorld(true);
+  let initialBox = new THREE.Box3().setFromObject(shoe);
+  let initialCenter = initialBox.getCenter(new THREE.Vector3());
+
+  shoe.position.x -= initialCenter.x;
+  shoe.position.z -= initialCenter.z;
+
+  shoe.updateMatrixWorld(true);
+  initialBox = new THREE.Box3().setFromObject(shoe);
+
+  // Apoia o tênis logo acima do "chão".
+  shoe.position.y += 0.05 - initialBox.min.y;
+  shoe.updateMatrixWorld(true);
+
+  // ---------- Utilidades ----------
+  function setHomeView(){
+    // Visão quase lateral, apenas levemente de cima.
+    // É propositalmente simples para o sneaker ficar "reto" no celular.
+    camera.position.set(0.6, 2.8, 10.5);
+    controls.target.set(0, 0.95, 0);
+    camera.zoom = 1.0;
+    camera.near = 0.1;
+    camera.far = 100;
+    camera.lookAt(controls.target);
+    camera.updateProjectionMatrix();
+    controls.update();
+  }
+
+  function resize(){
+    const r = host.getBoundingClientRect();
+    const aspect = r.width / Math.max(1, r.height);
+
+    // Altura visível fixa. A largura se adapta ao celular.
+    // Isso mantém o sneaker inteiro sem depender de perspectiva.
+    const viewHeight = 8.2;
+    camera.top = viewHeight / 2;
+    camera.bottom = -viewHeight / 2;
+    camera.left = -(viewHeight * aspect) / 2;
+    camera.right = (viewHeight * aspect) / 2;
+    camera.updateProjectionMatrix();
+
+    renderer.setSize(r.width, r.height, false);
+  }
+
+  window.addEventListener('resize', () => {
+    resize();
+    renderer.render(scene, camera);
+  });
+
+  resize();
+  setHomeView();
+
+  requestAnimationFrame(() => {
+    resize();
+    setHomeView();
+    renderer.render(scene, camera);
+  });
+
+  function setStatus(msg){ statusEl.textContent = msg; }
+
+  function disposeMap(mat){
+    if(mat.map){ mat.map.dispose(); mat.map = null; }
+  }
+
+  function setColor(part, hex){
+    const mat = mats[part];
+    if(!mat) return;
+    disposeMap(mat);
+    mat.color.set(hex);
+    mat.needsUpdate = true;
+    setStatus(`${partNames[part]} recebeu a cor escolhida.`);
+  }
+
+  function cloneCanvas(source){
+    const c = document.createElement('canvas');
+    c.width = source.width; c.height = source.height;
+    c.getContext('2d').drawImage(source,0,0);
+    return c;
+  }
+
+  function applyTextureTo(part, sourceCanvas){
+    const mat = mats[part];
+    if(!mat) return;
+    disposeMap(mat);
+    const independent = cloneCanvas(sourceCanvas);
+    const tex = new THREE.CanvasTexture(independent);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+    tex.repeat.set(part === 'laces' ? 3 : 1.35, part === 'laces' ? 3 : 1.35);
+    tex.anisotropy = renderer.capabilities.getMaxAnisotropy();
+    mat.map = tex;
+    mat.color.set(0xffffff);
+    mat.needsUpdate = true;
+    setStatus(`Material real aplicado em ${partNames[part]}. Escolha outra região para continuar.`);
+  }
+
+  function averageColor(canvas){
+    const ctx = canvas.getContext('2d',{willReadFrequently:true});
+    const data = ctx.getImageData(0,0,canvas.width,canvas.height).data;
+    let r=0,g=0,b=0,n=0;
+    const step = 16;
+    for(let i=0;i<data.length;i+=4*step){ r+=data[i];g+=data[i+1];b+=data[i+2];n++; }
+    return new THREE.Color(r/(255*n),g/(255*n),b/(255*n));
+  }
+
+  function showPreview(source, label='Material capturado'){
+    pctx.clearRect(0,0,preview.width,preview.height);
+    pctx.drawImage(source,0,0,preview.width,preview.height);
+    document.getElementById('previewTitle').textContent = label;
+    document.getElementById('previewInfo').textContent = `Pronto para aplicar em ${partNames[selectedPart]}.`;
+  }
+
+  // ---------- Seleção de região ----------
+  document.querySelectorAll('.part').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      document.querySelectorAll('.part').forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+      selectedPart = btn.dataset.part;
+      selectedPill.textContent = `Editando: ${partNames[selectedPart]}`;
+      if(lastMaterialCanvas) document.getElementById('previewInfo').textContent = `Pronto para aplicar em ${partNames[selectedPart]}.`;
+      setStatus(`Região selecionada: ${partNames[selectedPart]}.`);
+    });
+  });
+
+  // ---------- Câmera ----------
+  document.getElementById('startCamera').addEventListener('click', async ()=>{
+    try{
+      if(stream) stream.getTracks().forEach(t=>t.stop());
+      stream = await navigator.mediaDevices.getUserMedia({
+        video:{facingMode:{ideal:'environment'}, width:{ideal:1280}, height:{ideal:720}},
+        audio:false
+      });
+      video.srcObject = stream;
+      await video.play();
+      cameraEmpty.style.display='none';
+      setStatus('Câmera aberta. Preencha o quadrado com o material e toque em “Capturar material”.');
+    }catch(err){
+      console.error(err);
+      setStatus('Não consegui abrir a câmera. Em celular, publique no Vercel/HTTPS e permita o acesso. Você também pode usar “Usar uma foto”.');
+    }
+  });
+
+  document.getElementById('capture').addEventListener('click', ()=>{
+    if(!video.videoWidth){
+      setStatus('Abra a câmera primeiro, ou use uma foto do material.');
+      return;
+    }
+    const vw=video.videoWidth, vh=video.videoHeight;
+    const side = Math.min(vw,vh)*0.48;
+    const sx=(vw-side)/2, sy=(vh-side)/2;
+    cctx.clearRect(0,0,512,512);
+    cctx.drawImage(video,sx,sy,side,side,0,0,512,512);
+    lastMaterialCanvas = cloneCanvas(captureCanvas);
+    showPreview(lastMaterialCanvas);
+    applyTextureTo(selectedPart,lastMaterialCanvas);
+  });
+
+  document.getElementById('fileInput').addEventListener('change',(e)=>{
+    const file=e.target.files?.[0]; if(!file) return;
+    const img=new Image();
+    img.onload=()=>{
+      const side=Math.min(img.width,img.height);
+      const sx=(img.width-side)/2, sy=(img.height-side)/2;
+      cctx.clearRect(0,0,512,512);
+      cctx.drawImage(img,sx,sy,side,side,0,0,512,512);
+      lastMaterialCanvas=cloneCanvas(captureCanvas);
+      showPreview(lastMaterialCanvas,'Foto carregada');
+      applyTextureTo(selectedPart,lastMaterialCanvas);
+      URL.revokeObjectURL(img.src);
+    };
+    img.src=URL.createObjectURL(file);
+  });
+
+  document.getElementById('applyColor').addEventListener('click',()=>{
+    if(!lastMaterialCanvas){ setStatus('Capture ou carregue uma imagem do material primeiro.'); return; }
+    const c=averageColor(lastMaterialCanvas);
+    disposeMap(mats[selectedPart]); mats[selectedPart].color.copy(c); mats[selectedPart].needsUpdate=true;
+    setStatus(`Cor média do material aplicada em ${partNames[selectedPart]}.`);
+  });
+
+  document.querySelectorAll('.swatch').forEach(b=>b.addEventListener('click',()=>setColor(selectedPart,b.dataset.color)));
+
+  document.getElementById('recenter').addEventListener('click',()=>{
+    shoe.rotation.set(0, -0.04, 0);
+    setHomeView();
+    setStatus('Tênis voltou para a visão inicial.');
+  });
+
+  document.getElementById('reset').addEventListener('click',()=>{
+    for(const [k,m] of Object.entries(mats)){
+      disposeMap(m); m.color.setHex(defaultColors[k]); m.needsUpdate=true;
+    }
+    pctx.clearRect(0,0,preview.width,preview.height);
+    lastMaterialCanvas=null;
+    document.getElementById('previewTitle').textContent='Nenhum material capturado';
+    document.getElementById('previewInfo').textContent='A textura aparecerá aqui.';
+    shoe.rotation.set(0, -0.04, 0);
+    setHomeView();
+    setStatus('Tênis restaurado e centralizado.');
+  });
+
+  document.getElementById('spin').addEventListener('click',()=>{
+    autoSpin=!autoSpin;
+    document.getElementById('spin').textContent = autoSpin ? 'Parar giro' : 'Girar 360°';
+  });
+
+  document.getElementById('save').addEventListener('click',()=>{
+    renderer.render(scene,camera);
+    const a=document.createElement('a');
+    a.download='studio-tangivel-customizacao.png';
+    a.href=renderer.domElement.toDataURL('image/png');
+    a.click();
+    setStatus('Imagem da customização gerada.');
+  });
+
+  // ---------- Render ----------
+  const clock=new THREE.Clock();
+  function animate(){
+    requestAnimationFrame(animate);
+    const dt=clock.getDelta();
+    if(autoSpin) shoe.rotation.y += dt*.55;
+    controls.update();
+    renderer.render(scene,camera);
+  }
+  animate();
+</script>
+</body>
+</html>
