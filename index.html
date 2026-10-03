@@ -114,7 +114,7 @@
       <div class="brandmark">✦</div>
       <div><h1>Studio Tangível</h1><small>material real → customização 3D</small></div>
     </div>
-    <div class="version">MVP 0.1b • visão corrigida</div>
+    <div class="version">MVP 0.1c • enquadramento automático</div>
   </header>
 
   <main>
@@ -124,7 +124,7 @@
         <div class="pill">👟 Sneaker genérico • sem marca</div>
         <div class="pill" id="selectedPill">Editando: Lateral</div>
       </div>
-      <div class="hint">Arraste para girar • pinça para zoom • use “Centralizar” se sair da tela</div>
+      <div class="hint">Tênis enquadrado automaticamente • arraste para girar • pinça para zoom</div>
     </section>
 
     <aside class="panel">
@@ -238,8 +238,8 @@
   const controls = new OrbitControls(camera, renderer.domElement);
   controls.enableDamping = true;
   controls.target.set(0, .9, 0);
-  controls.minDistance = 5.5;
-  controls.maxDistance = 18;
+  controls.minDistance = 4;
+  controls.maxDistance = 30;
 
   const hemi = new THREE.HemisphereLight(0xffffff, 0x6a6a62, 2.2);
   scene.add(hemi);
@@ -272,8 +272,8 @@
   Object.entries(mats).forEach(([k,m]) => defaultColors[k] = m.color.getHex());
 
   const shoe = new THREE.Group();
-  shoe.rotation.y = -0.18;
-  shoe.scale.setScalar(0.88);
+  shoe.rotation.y = -0.12;
+  shoe.scale.setScalar(0.82);
   shoe.position.set(0, 0.05, 0);
   scene.add(shoe);
 
@@ -376,42 +376,56 @@
   label.position.set(-.35,2.05,.38); label.rotation.z = -.1; shoe.add(label);
 
   // ---------- Utilidades ----------
-  let firstFit = true;
+  let hasUserMovedCamera = false;
 
-  function fitShoeView(force=false){
-    const r = host.getBoundingClientRect();
-    const aspect = r.width / Math.max(1, r.height);
+  function fitShoeView(){
+    // Mede o sneaker já montado, incluindo todas as peças.
+    shoe.updateMatrixWorld(true);
+    const box = new THREE.Box3().setFromObject(shoe);
+    const center = box.getCenter(new THREE.Vector3());
+    const size = box.getSize(new THREE.Vector3());
 
-    // Em telas estreitas/verticais precisamos recuar bastante a câmera
-    // para o comprimento inteiro do tênis caber no campo de visão horizontal.
-    if(aspect < 0.85){
-      camera.position.set(9.8, 5.6, 11.8);
-      controls.target.set(0, .82, 0);
-    }else if(aspect < 1.15){
-      camera.position.set(8.8, 5.0, 10.4);
-      controls.target.set(0, .84, 0);
-    }else{
-      camera.position.set(7.4, 4.25, 8.7);
-      controls.target.set(0, .82, 0);
-    }
+    const rect = host.getBoundingClientRect();
+    const aspect = Math.max(0.25, rect.width / Math.max(1, rect.height));
 
+    // Calcula FOV horizontal a partir do FOV vertical.
+    const vFov = THREE.MathUtils.degToRad(camera.fov);
+    const hFov = 2 * Math.atan(Math.tan(vFov / 2) * aspect);
+
+    // Calcula a distância necessária para caber tanto na largura quanto na altura.
+    const fitHeightDistance = (size.y / 2) / Math.tan(vFov / 2);
+    const fitWidthDistance  = (size.x / 2) / Math.tan(hFov / 2);
+
+    // Margem generosa no celular para o tênis nunca ficar cortado.
+    const distance = Math.max(fitHeightDistance, fitWidthDistance) * 1.55;
+
+    // Visão 3/4 levemente de cima.
+    const direction = new THREE.Vector3(0.34, 0.34, 1.0).normalize();
+
+    controls.target.copy(center);
+    camera.position.copy(center).add(direction.multiplyScalar(distance));
+
+    camera.near = Math.max(0.05, distance / 100);
+    camera.far = Math.max(100, distance * 20);
+    camera.updateProjectionMatrix();
     controls.update();
   }
 
   function resize(){
     const r = host.getBoundingClientRect();
-    camera.aspect = r.width / Math.max(1,r.height);
+    camera.aspect = r.width / Math.max(1, r.height);
     camera.updateProjectionMatrix();
     renderer.setSize(r.width, r.height, false);
 
-    if(firstFit){
-      fitShoeView(true);
-      firstFit = false;
-    }
+    // Sempre reenquadra após mudança real no tamanho da área.
+    fitShoeView();
   }
 
   new ResizeObserver(()=>{
     resize();
+  }).observe(host);
+
+  resize();
   }).observe(host);
 
   resize();
@@ -541,9 +555,9 @@
   document.querySelectorAll('.swatch').forEach(b=>b.addEventListener('click',()=>setColor(selectedPart,b.dataset.color)));
 
   document.getElementById('recenter').addEventListener('click',()=>{
-    shoe.rotation.set(0, -0.18, 0);
-    fitShoeView(true);
-    setStatus('Tênis centralizado novamente.');
+    shoe.rotation.set(0, -0.12, 0);
+    fitShoeView();
+    setStatus('Tênis enquadrado e centralizado novamente.');
   });
 
   document.getElementById('reset').addEventListener('click',()=>{
@@ -554,8 +568,8 @@
     lastMaterialCanvas=null;
     document.getElementById('previewTitle').textContent='Nenhum material capturado';
     document.getElementById('previewInfo').textContent='A textura aparecerá aqui.';
-    shoe.rotation.set(0, -0.18, 0);
-    fitShoeView(true);
+    shoe.rotation.set(0, -0.12, 0);
+    fitShoeView();
     setStatus('Tênis restaurado e centralizado.');
   });
 
