@@ -114,14 +114,14 @@
       <div class="brandmark">✦</div>
       <div><h1>Studio Tangível</h1><small>material real → customização 3D</small></div>
     </div>
-    <div class="version">MVP 0.1c • enquadramento automático</div>
+    <div class="version">MVP 0.1d • correção 3D</div>
   </header>
 
   <main>
     <section class="viewer">
       <div id="three"></div>
       <div class="viewer-top">
-        <div class="pill">👟 Sneaker genérico • sem marca</div>
+        <div class="pill">👟 Sneaker genérico • v0.1d</div>
         <div class="pill" id="selectedPill">Editando: Lateral</div>
       </div>
       <div class="hint">Tênis enquadrado automaticamente • arraste para girar • pinça para zoom</div>
@@ -184,7 +184,7 @@
       </section>
 
       <div class="status" id="status">
-        Pronto. Escolha uma região e capture um material. A câmera funciona em HTTPS (por exemplo, no Vercel).
+        v0.1d carregada. O tênis 3D deve aparecer inteiro e centralizado. Escolha uma região e capture um material.
       </div>
       <footer>Protótipo de validação • Studio Tangível • modelo 3D gerado por código</footer>
     </aside>
@@ -397,10 +397,11 @@
     const fitWidthDistance  = (size.x / 2) / Math.tan(hFov / 2);
 
     // Margem generosa no celular para o tênis nunca ficar cortado.
-    const distance = Math.max(fitHeightDistance, fitWidthDistance) * 1.55;
+    let distance = Math.max(fitHeightDistance, fitWidthDistance) * 1.65;
+    if(!Number.isFinite(distance) || distance <= 0) distance = 10;
 
     // Visão 3/4 levemente de cima.
-    const direction = new THREE.Vector3(0.34, 0.34, 1.0).normalize();
+    const direction = new THREE.Vector3(0.34, 0.30, 1.0).normalize();
 
     controls.target.copy(center);
     camera.position.copy(center).add(direction.multiplyScalar(distance));
@@ -408,6 +409,7 @@
     camera.near = Math.max(0.05, distance / 100);
     camera.far = Math.max(100, distance * 20);
     camera.updateProjectionMatrix();
+    camera.lookAt(center);
     controls.update();
   }
 
@@ -426,9 +428,13 @@
   }).observe(host);
 
   resize();
-  }).observe(host);
 
-  resize();
+  // Reconfere o enquadramento no próximo frame, já com o canvas dimensionado.
+  requestAnimationFrame(() => {
+    resize();
+    fitShoeView();
+    renderer.render(scene, camera);
+  });
 
   function setStatus(msg){ statusEl.textContent = msg; }
 
