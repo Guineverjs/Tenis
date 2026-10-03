@@ -1,0 +1,250 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#171814">
+  <title>Studio Tangível — Sneaker GLB v0.3b</title>
+  <style>
+    :root{--bg:#eeeae2;--panel:#fffdf8;--ink:#25261f;--muted:#74766c;--line:#d8d2c5;--dark:#171814}
+    *{box-sizing:border-box}
+    html,body{margin:0;height:100%;font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:var(--bg);color:var(--ink)}
+    body{overflow:hidden}
+    .app{height:100%;display:grid;grid-template-rows:auto 1fr auto}
+    header{display:flex;align-items:center;justify-content:space-between;padding:13px 15px;background:var(--panel);border-bottom:1px solid var(--line);gap:10px}
+    .brand{display:flex;align-items:center;gap:10px}.mark{width:43px;height:43px;border-radius:14px;background:var(--dark);display:grid;place-items:center;color:#fff;font-size:21px}
+    h1{font-size:18px;margin:0}.sub{font-size:11px;color:var(--muted);margin-top:2px}.version{font-size:11px;color:var(--muted);border:1px solid var(--line);padding:7px 10px;border-radius:999px}
+    .stage{position:relative;min-height:0}#three{position:absolute;inset:0}
+    .badge{position:absolute;z-index:5;top:14px;left:14px;background:rgba(255,253,248,.94);border:1px solid var(--line);padding:8px 11px;border-radius:999px;font-size:12px;color:var(--muted)}
+    .hint{position:absolute;z-index:5;left:50%;bottom:15px;transform:translateX(-50%);background:rgba(23,24,20,.86);color:#fff;padding:9px 13px;border-radius:999px;font-size:12px;white-space:nowrap}
+    .loading{position:absolute;z-index:10;left:50%;top:50%;transform:translate(-50%,-50%);background:rgba(23,24,20,.9);color:#fff;padding:12px 16px;border-radius:14px;font-size:13px;text-align:center}
+    .controls{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding:10px;background:var(--panel);border-top:1px solid var(--line)}
+    button{min-height:44px;border-radius:12px;border:1px solid var(--line);background:#fff;color:var(--ink);font:inherit;font-weight:700}
+    button.primary{background:var(--dark);color:#fff;border-color:var(--dark)}
+    footer{position:absolute;right:9px;bottom:60px;z-index:5;font-size:9px;color:var(--muted);background:rgba(255,253,248,.86);padding:4px 6px;border-radius:6px}
+    @media(max-width:520px){.sub,.version{display:none}.hint{font-size:11px}}
+  </style>
+  <script type="importmap">
+  {
+    "imports":{
+      "three":"https://cdn.jsdelivr.net/npm/three@0.168.0/build/three.module.js",
+      "three/addons/":"https://cdn.jsdelivr.net/npm/three@0.168.0/examples/jsm/"
+    }
+  }
+  </script>
+</head>
+<body>
+<div class="app">
+  <header>
+    <div class="brand">
+      <div class="mark">✦</div>
+      <div><h1>Studio Tangível</h1><div class="sub">teste de enquadramento do sneaker real</div></div>
+    </div>
+    <div class="version">GLB v0.3b</div>
+  </header>
+
+  <main class="stage">
+    <div id="three"></div>
+    <div class="badge">👟 Sneaker real • v0.3b</div>
+    <div id="loading" class="loading">Carregando sneaker…</div>
+    <div class="hint">Abre em lateral reta • arraste para girar • pinça para zoom</div>
+    <footer>© 2021 Shopify • CC BY 4.0 • Khronos glTF Sample Assets</footer>
+  </main>
+
+  <div class="controls">
+    <button id="side" class="primary">Lateral reta</button>
+    <button id="threequarter">Visão 3/4</button>
+    <button id="spin">Girar 360°</button>
+  </div>
+</div>
+
+<script type="module">
+  import * as THREE from 'three';
+  import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+  import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+
+  const host = document.getElementById('three');
+  const loading = document.getElementById('loading');
+
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color(0xeeeae2);
+
+  // Câmera ortográfica: enquadramento previsível no celular.
+  const camera = new THREE.OrthographicCamera(-3,3,3,-3,0.01,100);
+
+  const renderer = new THREE.WebGLRenderer({antialias:true,preserveDrawingBuffer:true});
+  renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+  renderer.outputColorSpace = THREE.SRGBColorSpace;
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.05;
+  host.appendChild(renderer.domElement);
+
+  const controls = new OrbitControls(camera,renderer.domElement);
+  controls.enableDamping = true;
+  controls.enablePan = false;
+  controls.target.set(0,0,0);
+  controls.minZoom = .65;
+  controls.maxZoom = 3;
+
+  scene.add(new THREE.HemisphereLight(0xffffff,0x73736d,2.6));
+  const key = new THREE.DirectionalLight(0xffffff,3.0);
+  key.position.set(4,7,6); key.castShadow=true; scene.add(key);
+  const fill = new THREE.DirectionalLight(0xffead2,1.1);
+  fill.position.set(-4,3,-5); scene.add(fill);
+
+  const pivot = new THREE.Group();
+  scene.add(pivot);
+
+  let model=null;
+  let spinning=false;
+  let currentView='side';
+
+  const MODEL_URL =
+    'https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/MaterialsVariantsShoe/glTF-Binary/MaterialsVariantsShoe.glb';
+
+  function prepareModel(obj){
+    // Zera qualquer transformação que nós mesmos pudéssemos ter aplicado.
+    obj.position.set(0,0,0);
+    obj.rotation.set(0,0,0);
+
+    // 1) MEDE PRIMEIRO no tamanho original.
+    obj.updateMatrixWorld(true);
+    let box = new THREE.Box3().setFromObject(obj);
+    let size = box.getSize(new THREE.Vector3());
+
+    // 2) ESCALA PRIMEIRO.
+    // Este era o ponto errado na versão anterior.
+    const targetLongestDimension = 4.4;
+    const scaleFactor = targetLongestDimension / Math.max(size.x,size.y,size.z,.001);
+    obj.scale.multiplyScalar(scaleFactor);
+    obj.updateMatrixWorld(true);
+
+    // 3) SÓ AGORA mede de novo e centraliza.
+    box = new THREE.Box3().setFromObject(obj);
+    const center = box.getCenter(new THREE.Vector3());
+
+    obj.position.x -= center.x;
+    obj.position.y -= center.y;
+    obj.position.z -= center.z;
+    obj.updateMatrixWorld(true);
+
+    // A partir daqui o centro real do modelo está no (0,0,0).
+    obj.traverse(n=>{
+      if(n.isMesh){
+        n.castShadow=true;
+        n.receiveShadow=true;
+      }
+    });
+  }
+
+  function getViewBox(){
+    pivot.updateMatrixWorld(true);
+    return new THREE.Box3().setFromObject(pivot);
+  }
+
+  function fitOrtho(){
+    if(!model) return;
+
+    const rect=host.getBoundingClientRect();
+    const aspect=Math.max(.3,rect.width/Math.max(1,rect.height));
+
+    // Como a câmera olha ao longo de Z, o Box3 em X/Y corresponde
+    // diretamente ao que precisa caber na tela.
+    const box=getViewBox();
+    const size=box.getSize(new THREE.Vector3());
+
+    const margin=1.32;
+    const requiredHeightByHeight=Math.max(size.y*margin,1);
+    const requiredHeightByWidth=Math.max((size.x*margin)/aspect,1);
+    const viewHeight=Math.max(requiredHeightByHeight,requiredHeightByWidth);
+
+    camera.top=viewHeight/2;
+    camera.bottom=-viewHeight/2;
+    camera.left=-(viewHeight*aspect)/2;
+    camera.right=(viewHeight*aspect)/2;
+
+    camera.position.set(0,0,10);
+    camera.up.set(0,1,0);
+    camera.zoom=1;
+    camera.lookAt(0,0,0);
+    camera.updateProjectionMatrix();
+
+    controls.target.set(0,0,0);
+    controls.update();
+  }
+
+  function resize(){
+    const rect=host.getBoundingClientRect();
+    renderer.setSize(rect.width,rect.height,false);
+    fitOrtho();
+  }
+
+  function sideView(){
+    if(!model) return;
+    currentView='side';
+    pivot.rotation.set(0,0,0);
+    camera.position.set(0,0,10);
+    camera.up.set(0,1,0);
+    controls.target.set(0,0,0);
+    controls.update();
+    fitOrtho();
+  }
+
+  function view34(){
+    if(!model) return;
+    currentView='threequarter';
+    // Somente o tênis gira. A câmera continua reta e central.
+    pivot.rotation.set(0,-THREE.MathUtils.degToRad(28),0);
+    camera.position.set(0,0,10);
+    camera.up.set(0,1,0);
+    controls.target.set(0,0,0);
+    controls.update();
+    fitOrtho();
+  }
+
+  const loader=new GLTFLoader();
+  loader.load(
+    MODEL_URL,
+    gltf=>{
+      model=gltf.scene;
+      pivot.add(model);
+      prepareModel(model);
+
+      // Começa SEM inclinação.
+      sideView();
+
+      loading.style.display='none';
+    },
+    undefined,
+    err=>{
+      console.error(err);
+      loading.innerHTML='Erro ao carregar o GLB.<br><small>Recarregue a página.</small>';
+    }
+  );
+
+  document.getElementById('side').onclick=sideView;
+  document.getElementById('threequarter').onclick=view34;
+  document.getElementById('spin').onclick=()=>{
+    spinning=!spinning;
+    document.getElementById('spin').textContent=spinning?'Parar giro':'Girar 360°';
+  };
+
+  addEventListener('resize',resize);
+  resize();
+
+  const clock=new THREE.Clock();
+  function animate(){
+    requestAnimationFrame(animate);
+    const dt=clock.getDelta();
+    if(spinning && model){
+      pivot.rotation.y+=dt*.55;
+    }
+    controls.update();
+    renderer.render(scene,camera);
+  }
+  animate();
+</script>
+</body>
+</html>
