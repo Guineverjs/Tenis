@@ -1,0 +1,312 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#171814">
+  <title>Studio Tangível — Teste do Sneaker 3D</title>
+  <style>
+    :root{--bg:#eeeae1;--panel:#fffdf8;--ink:#262720;--muted:#74766c;--line:#d9d3c6;--dark:#171814}
+    *{box-sizing:border-box}
+    html,body{margin:0;height:100%;font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:var(--bg);color:var(--ink)}
+    body{overflow:hidden}
+    .app{height:100%;display:grid;grid-template-rows:auto 1fr auto}
+    header{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 16px;background:var(--panel);border-bottom:1px solid var(--line)}
+    .brand{display:flex;align-items:center;gap:10px}
+    .mark{width:42px;height:42px;border-radius:13px;background:var(--dark);color:#fff;display:grid;place-items:center;font-size:20px}
+    h1{font-size:17px;margin:0}.sub{font-size:11px;color:var(--muted);margin-top:2px}
+    .version{font-size:11px;color:var(--muted);border:1px solid var(--line);padding:7px 10px;border-radius:999px}
+    .stage{position:relative;min-height:0}
+    #three{position:absolute;inset:0}
+    .top{position:absolute;z-index:5;left:14px;right:14px;top:14px;display:flex;justify-content:space-between;gap:8px;pointer-events:none}
+    .pill{background:rgba(255,253,248,.92);border:1px solid rgba(217,211,198,.95);padding:8px 11px;border-radius:999px;font-size:12px;color:var(--muted);backdrop-filter:blur(8px)}
+    .hint{position:absolute;z-index:5;left:50%;bottom:14px;transform:translateX(-50%);background:rgba(23,24,20,.86);color:white;padding:9px 13px;border-radius:999px;font-size:12px;white-space:nowrap}
+    .controls{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;padding:10px;background:var(--panel);border-top:1px solid var(--line)}
+    button{min-height:44px;border-radius:12px;border:1px solid var(--line);background:#fff;color:var(--ink);font:inherit;font-weight:700}
+    button.primary{background:var(--dark);color:#fff;border-color:var(--dark)}
+    @media(max-width:520px){
+      .sub,.version{display:none}
+      .hint{font-size:11px;max-width:calc(100vw - 30px);overflow:hidden;text-overflow:ellipsis}
+    }
+  </style>
+  <script type="importmap">
+    {
+      "imports":{
+        "three":"https://cdn.jsdelivr.net/npm/three@0.168.0/build/three.module.js",
+        "three/addons/":"https://cdn.jsdelivr.net/npm/three@0.168.0/examples/jsm/"
+      }
+    }
+  </script>
+</head>
+<body>
+<div class="app">
+  <header>
+    <div class="brand">
+      <div class="mark">✦</div>
+      <div><h1>Studio Tangível</h1><div class="sub">teste isolado do sneaker 3D</div></div>
+    </div>
+    <div class="version">Sneaker v0.2a</div>
+  </header>
+
+  <main class="stage">
+    <div id="three"></div>
+    <div class="top">
+      <div class="pill">👟 Modelo genérico • sem marca</div>
+      <div class="pill">somente teste visual</div>
+    </div>
+    <div class="hint">Arraste para girar • pinça para zoom</div>
+  </main>
+
+  <div class="controls">
+    <button id="home" class="primary">Visão inicial</button>
+    <button id="side">Lateral</button>
+    <button id="spin">Girar 360°</button>
+  </div>
+</div>
+
+<script type="module">
+  import * as THREE from 'three';
+  import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+  const host = document.getElementById('three');
+
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color(0xeeeae1);
+
+  const camera = new THREE.OrthographicCamera(-3.6,3.6,2.7,-2.7,0.1,100);
+  camera.position.set(5.6,3.4,7.8);
+
+  const renderer = new THREE.WebGLRenderer({antialias:true});
+  renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.outputColorSpace = THREE.SRGBColorSpace;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.05;
+  host.appendChild(renderer.domElement);
+
+  const controls = new OrbitControls(camera, renderer.domElement);
+  controls.enableDamping = true;
+  controls.enablePan = false;
+  controls.target.set(0,.75,0);
+  controls.minZoom = .75;
+  controls.maxZoom = 2.8;
+
+  scene.add(new THREE.HemisphereLight(0xffffff,0x76776f,2.2));
+  const key = new THREE.DirectionalLight(0xffffff,3.2);
+  key.position.set(4,7,6); key.castShadow=true; scene.add(key);
+  const fill = new THREE.DirectionalLight(0xffe7c6,1.0);
+  fill.position.set(-4,2,-4); scene.add(fill);
+
+  const ground = new THREE.Mesh(
+    new THREE.CircleGeometry(4.5,80),
+    new THREE.MeshStandardMaterial({color:0xded9cf,roughness:.98})
+  );
+  ground.rotation.x=-Math.PI/2;
+  ground.position.y=-.03;
+  ground.receiveShadow=true;
+  scene.add(ground);
+
+  const shoe = new THREE.Group();
+  scene.add(shoe);
+
+  const mats = {
+    upper:new THREE.MeshStandardMaterial({color:0xe7e4dd,roughness:.82}),
+    toe:new THREE.MeshStandardMaterial({color:0xd7d3c9,roughness:.78}),
+    heel:new THREE.MeshStandardMaterial({color:0xd0cbc0,roughness:.84}),
+    side:new THREE.MeshStandardMaterial({color:0xf0eee8,roughness:.76}),
+    tongue:new THREE.MeshStandardMaterial({color:0xdad6cd,roughness:.9}),
+    laces:new THREE.MeshStandardMaterial({color:0x4c504c,roughness:.75}),
+    sole:new THREE.MeshStandardMaterial({color:0xf4f1ea,roughness:.8}),
+    outsole:new THREE.MeshStandardMaterial({color:0x2f312f,roughness:.95}),
+    accent:new THREE.MeshStandardMaterial({color:0x607a55,roughness:.8}),
+    metal:new THREE.MeshStandardMaterial({color:0x777a76,roughness:.35,metalness:.28})
+  };
+
+  function extrude(points, depth, material, zOffset=0, bevel=.06){
+    const s = new THREE.Shape();
+    s.moveTo(points[0][0],points[0][1]);
+    for(let i=1;i<points.length;i++) s.lineTo(points[i][0],points[i][1]);
+    s.closePath();
+    const g = new THREE.ExtrudeGeometry(s,{
+      depth,
+      bevelEnabled:true,
+      bevelSegments:3,
+      bevelSize:bevel,
+      bevelThickness:bevel*.72,
+      steps:1,
+      curveSegments:18
+    });
+    // IMPORTANTE: não recentralizamos a geometria.
+    // O shape já nasce no sistema de coordenadas correto.
+    const m = new THREE.Mesh(g,material);
+    m.position.z = -depth/2 + zOffset;
+    m.castShadow = true;
+    m.receiveShadow = true;
+    return m;
+  }
+
+  // Cabedal principal: perfil lateral coerente
+  const upper = extrude([
+    [-2.45,.32],[-2.30,1.12],[-1.92,1.58],[-1.42,1.62],[-.95,1.40],
+    [-.42,1.18],[.28,1.03],[.92,.82],[1.58,.62],[2.18,.48],[2.47,.30],
+    [2.38,.18],[-2.28,.18]
+  ],1.26,mats.upper,0,.08);
+  shoe.add(upper);
+
+  // Sola principal
+  const sole = extrude([
+    [-2.55,.10],[-2.45,.38],[1.95,.40],[2.44,.30],[2.58,.17],[2.50,.04],[-2.30,.02]
+  ],1.36,mats.sole,0,.055);
+  shoe.add(sole);
+
+  // Borracha inferior
+  const outsole = extrude([
+    [-2.50,-.02],[-2.42,.13],[2.47,.14],[2.59,.06],[2.50,-.08],[-2.30,-.10]
+  ],1.40,mats.outsole,0,.035);
+  shoe.add(outsole);
+
+  // Biqueira sobreposta
+  const toe = extrude([
+    [1.00,.35],[1.28,.73],[1.72,.72],[2.18,.53],[2.46,.31],[2.34,.22],[1.20,.22]
+  ],1.30,mats.toe,.015,.045);
+  shoe.add(toe);
+
+  // Calcanhar
+  const heel = extrude([
+    [-2.43,.30],[-2.30,1.10],[-1.92,1.52],[-1.55,1.48],[-1.60,.25],[-2.28,.18]
+  ],1.31,mats.heel,.02,.045);
+  shoe.add(heel);
+
+  // Painel lateral para dar leitura de sneaker real
+  const sidePanel = extrude([
+    [-1.48,.55],[-1.15,1.23],[-.54,1.18],[.20,1.00],[.84,.78],[.58,.54],[-.22,.50]
+  ],1.34,mats.side,.035,.035);
+  shoe.add(sidePanel);
+
+  // Língua: placa inclinada, colocada de forma coerente com o cabedal
+  const tongue = new THREE.Mesh(new THREE.BoxGeometry(.82,1.36,.56,2,2,2),mats.tongue);
+  tongue.position.set(-.20,1.43,0);
+  tongue.rotation.z=-.15;
+  tongue.castShadow=true;
+  shoe.add(tongue);
+
+  // Etiqueta neutra na língua
+  const label = new THREE.Mesh(new THREE.BoxGeometry(.34,.18,.025),mats.accent);
+  label.position.set(-.20,1.98,.295);
+  label.rotation.z=-.15;
+  shoe.add(label);
+
+  // Faixas de apoio dos cadarços
+  const laceBaseL = new THREE.Mesh(new THREE.BoxGeometry(.18,1.05,.10),mats.side);
+  laceBaseL.position.set(-.65,1.18,.31); laceBaseL.rotation.z=-.18; shoe.add(laceBaseL);
+  const laceBaseR = laceBaseL.clone();
+  laceBaseR.position.x=.32; shoe.add(laceBaseR);
+
+  // Cadarços e ilhós
+  for(let i=0;i<5;i++){
+    const y=1.02+i*.17;
+    const x=-.13+i*.035;
+
+    const lace = new THREE.Mesh(new THREE.BoxGeometry(1.05,.055,.055),mats.laces);
+    lace.position.set(x,y,.365);
+    lace.rotation.z=-.15;
+    lace.castShadow=true;
+    shoe.add(lace);
+
+    for(const sx of [-1,1]){
+      const ring = new THREE.Mesh(new THREE.TorusGeometry(.05,.016,8,20),mats.metal);
+      ring.position.set(x+sx*.55,y,.39);
+      ring.rotation.x=Math.PI/2;
+      shoe.add(ring);
+    }
+  }
+
+  // Costuras laterais discretas
+  const stitchMat = new THREE.LineDashedMaterial({color:0xa8a49a,dashSize:.08,gapSize:.05});
+  function addStitch(points,z=.69){
+    const g=new THREE.BufferGeometry().setFromPoints(points.map(([x,y])=>new THREE.Vector3(x,y,z)));
+    const line=new THREE.Line(g,stitchMat);
+    line.computeLineDistances();
+    shoe.add(line);
+  }
+  addStitch([[-1.45,.58],[-.75,.56],[-.10,.55],[.55,.60],[1.15,.55]]);
+  addStitch([[1.07,.38],[1.40,.53],[1.88,.48],[2.22,.35]]);
+
+  // Pequena peça de calcanhar
+  const heelTag = new THREE.Mesh(new THREE.BoxGeometry(.42,.20,.04),mats.accent);
+  heelTag.position.set(-2.16,.82,.69);
+  heelTag.rotation.z=.06;
+  shoe.add(heelTag);
+
+  // Centralização do grupo inteiro APÓS a montagem, sem alterar cada peça.
+  shoe.updateMatrixWorld(true);
+  const box = new THREE.Box3().setFromObject(shoe);
+  const center = box.getCenter(new THREE.Vector3());
+  const size = box.getSize(new THREE.Vector3());
+
+  shoe.position.x -= center.x;
+  shoe.position.z -= center.z;
+  shoe.position.y -= box.min.y;
+  shoe.rotation.y = -0.18;
+
+  // Escala global única
+  const targetWidth = 4.9;
+  shoe.scale.setScalar(targetWidth / size.x);
+
+  function resize(){
+    const r=host.getBoundingClientRect();
+    const aspect=r.width/Math.max(1,r.height);
+    const viewH=4.4;
+    camera.top=viewH/2;
+    camera.bottom=-viewH/2;
+    camera.left=-(viewH*aspect)/2;
+    camera.right=(viewH*aspect)/2;
+    camera.updateProjectionMatrix();
+    renderer.setSize(r.width,r.height,false);
+  }
+
+  function home(){
+    shoe.rotation.set(0,-.18,0);
+    camera.position.set(5.6,3.4,7.8);
+    controls.target.set(0,.80,0);
+    camera.zoom=1;
+    camera.lookAt(controls.target);
+    camera.updateProjectionMatrix();
+    controls.update();
+  }
+
+  function side(){
+    shoe.rotation.set(0,0,0);
+    camera.position.set(0,1.8,9.5);
+    controls.target.set(0,.80,0);
+    camera.zoom=1;
+    camera.lookAt(controls.target);
+    camera.updateProjectionMatrix();
+    controls.update();
+  }
+
+  resize();
+  home();
+  addEventListener('resize',resize);
+
+  let spinning=false;
+  document.getElementById('home').onclick=home;
+  document.getElementById('side').onclick=side;
+  document.getElementById('spin').onclick=()=>{
+    spinning=!spinning;
+    document.getElementById('spin').textContent=spinning?'Parar giro':'Girar 360°';
+  };
+
+  const clock=new THREE.Clock();
+  function animate(){
+    requestAnimationFrame(animate);
+    const dt=clock.getDelta();
+    if(spinning) shoe.rotation.y+=dt*.6;
+    controls.update();
+    renderer.render(scene,camera);
+  }
+  animate();
+</script>
+</body>
+</html>
